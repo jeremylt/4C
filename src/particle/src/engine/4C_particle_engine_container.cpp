@@ -7,21 +7,40 @@
 
 #include "4C_particle_engine_container.hpp"
 
+#include "4C_utils_enum.hpp"
 #include "4C_utils_exceptions.hpp"
+
+#include <Kokkos_Core.hpp>
+#include <Kokkos_DualView.hpp>
 
 FOUR_C_NAMESPACE_OPEN
 
 /*---------------------------------------------------------------------------*
  | definitions                                                               |
  *---------------------------------------------------------------------------*/
+struct Particle::ParticleContainer::StatesImpl
+{
+  // particle states in Kokkos Views indexed by particle state enum
+  // note: `states_->host_` should only be used before the dual state is initialized.
+  //        All code should use `states_->dual_` if valid otherwise use `states_->host_`.
+  std::vector<Kokkos::View<double*, Kokkos::HostSpace>> host_;
+  std::vector<Kokkos::DualView<double*>> dual_;
+  std::vector<bool> is_dual_valid_;
+};
+
 Particle::ParticleContainer::ParticleContainer()
-    : containersize_(0), particlestored_(0), statesvectorsize_(0), globalids_(0, -1)
+    : containersize_(0),
+      particlestored_(0),
+      statesvectorsize_(0),
+      globalids_(0, -1),
+      states_(std::make_unique<StatesImpl>())
 {
   // empty constructor
 }
 
-void Particle::ParticleContainer::setup(
-    int containersize, const std::set<Particle::State>& stateset)
+Particle::ParticleContainer::~ParticleContainer() = default;
+
+void Particle::ParticleContainer::setup(int containersize, const std::set<ParticleState>& stateset)
 {
   // set size of particle container (at least one)
   containersize_ = (containersize > 0) ? containersize : 1;
@@ -36,7 +55,9 @@ void Particle::ParticleContainer::setup(
   globalids_.resize(containersize_, -1);
 
   // allocate memory to hold particle states and dimension
-  states_.resize(statesvectorsize_);
+  states_->host_.resize(statesvectorsize_);
+  states_->dual_.resize(statesvectorsize_);
+  states_->is_dual_valid_.resize(statesvectorsize_);
   statedim_.resize(statesvectorsize_);
 
   // iterate over states to be stored in container
@@ -47,8 +68,12 @@ void Particle::ParticleContainer::setup(
     // set particle state dimension for current state
     statedim_[state_idx] = enum_to_state_dim(state);
 
+    // flag dual view as not currently valid
+    states_->is_dual_valid_[state_idx] = false;
+
     // allocate memory for current state in particle container
-    states_[state_idx].resize(containersize_ * statedim_[state_idx]);
+    states_->host_[state_idx] = Kokkos::View<double*, Kokkos::HostSpace>(
+        std::string{EnumTools::enum_name(state)}, containersize_ * statedim_[state_idx]);
   }
 }
 
@@ -65,8 +90,16 @@ void Particle::ParticleContainer::increase_container_size()
   {
     const int state_idx = static_cast<int>(state);
 
-    // resize vector of current state
-    states_[state_idx].resize(containersize_ * statedim_[state_idx]);
+    // resize container of current state
+    if (states_->is_dual_valid_[state_idx])
+    {
+      states_->dual_[state_idx].resize(containersize_ * statedim_[state_idx]);
+      states_->host_[state_idx] = states_->dual_[state_idx].view<Kokkos::HostSpace>();
+    }
+    else
+    {
+      Kokkos::resize(states_->host_[state_idx], containersize_ * statedim_[state_idx]);
+    }
   }
 }
 
@@ -90,8 +123,16 @@ void Particle::ParticleContainer::decrease_container_size()
   {
     const int state_idx = static_cast<int>(state);
 
-    // resize vector of current state
-    states_[state_idx].resize(containersize_ * statedim_[state_idx]);
+    // resize container of current state
+    if (states_->is_dual_valid_[state_idx])
+    {
+      states_->dual_[state_idx].resize(containersize_ * statedim_[state_idx]);
+      states_->host_[state_idx] = states_->dual_[state_idx].view<Kokkos::HostSpace>();
+    }
+    else
+    {
+      Kokkos::resize(states_->host_[state_idx], containersize_ * statedim_[state_idx]);
+    }
   }
 }
 
@@ -107,7 +148,7 @@ void Particle::ParticleContainer::add_particle(
     if (state_idx < static_cast<int>(states.size()) and not states[state_idx].empty() and
         static_cast<int>(states[state_idx].size()) != statedim_[state_idx])
       FOUR_C_THROW("can not add particle: dimensions of state '{}' do not match!",
-          enum_to_state_name(state));
+          EnumTools::enum_name(state));
   }
 #endif
 
@@ -170,7 +211,7 @@ void Particle::ParticleContainer::replace_particle(
     {
       FOUR_C_ASSERT(static_cast<int>(states[state_idx].size()) == statedim_[state_idx],
           "can not replace particle: dimensions of state '{}' do not match!",
-          enum_to_state_name(state));
+          EnumTools::enum_name(state));
 
       // get pointer to particle state
       double* state_ptr = get_ptr_to_state_writable(state, index);
@@ -238,55 +279,305 @@ void Particle::ParticleContainer::remove_particle(int index)
   --particlestored_;
 }
 
-const double* Particle::ParticleContainer::get_ptr_to_state(Particle::State state, int index) const
+inline double* Particle::ParticleContainer::get_ptr_to_state_internal(
+    ParticleState state, int index, ParticleSpace space, bool sync) const
+{
+  const int state_idx = static_cast<int>(state);
+
+  if (space == ParticleSpace::Host)
+  {
+    if (!states_->is_dual_valid_[state_idx])
+      return &(states_->host_[state_idx].data()[index * statedim_[state_idx]]);
+    if (sync)
+      states_->dual_[state_idx].sync<Kokkos::HostSpace>();
+    else
+      states_->dual_[state_idx].clear_sync_state();
+    return &(
+        states_->dual_[state_idx].view<Kokkos::HostSpace>().data()[index * statedim_[state_idx]]);
+  }
+  else if (space == ParticleSpace::Device)
+  {
+    if (!states_->is_dual_valid_[state_idx]) init_state_dual(state);
+    if (sync)
+      states_->dual_[state_idx].sync<Kokkos::DefaultExecutionSpace>();
+    else
+      states_->dual_[state_idx].clear_sync_state();
+    return &(states_->dual_[state_idx]
+            .view<Kokkos::DefaultExecutionSpace>()
+            .data()[index * statedim_[state_idx]]);
+  }
+  else
+  {
+    FOUR_C_THROW("unknown memory space requested");
+  }
+}
+
+const double* Particle::ParticleContainer::get_ptr_to_state(
+    ParticleState state, int index, ParticleSpace space) const
 {
   FOUR_C_ASSERT(storedstates_.contains(state), "particle state '{}' not stored in container!",
-      enum_to_state_name(state));
+      EnumTools::enum_name(state));
 
   FOUR_C_ASSERT(index >= 0 and index < particlestored_,
       "can not return pointer to state of particle as index {} out of bounds!", index);
 
+  return get_ptr_to_state_internal(state, index, space, true);
+}
+
+double* Particle::ParticleContainer::get_ptr_to_state_writable(
+    ParticleState state, int index, ParticleSpace space, bool sync)
+{
+  auto ptr = const_cast<const ParticleContainer&>(*this).get_ptr_to_state_internal(
+      state, index, space, sync);
+
   const int state_idx = static_cast<int>(state);
 
-  return &((states_[state_idx])[index * statedim_[state_idx]]);
-};
+  if (states_->is_dual_valid_[state_idx])
+  {
+    if (space == ParticleSpace::Host)
+      states_->dual_[state_idx].modify<Kokkos::HostSpace>();
+    else if (space == ParticleSpace::Device)
+      states_->dual_[state_idx].modify<Kokkos::DefaultExecutionSpace>();
+  }
+  return ptr;
+}
 
-double* Particle::ParticleContainer::get_ptr_to_state_writable(Particle::State state, int index)
+template <class ExecutionSpace>
+void scale_kernel(int size, double fac, double* ptr)
 {
-  return const_cast<double*>(
-      const_cast<const ParticleContainer&>(*this).get_ptr_to_state(state, index));
-};
+  Kokkos::parallel_for(
+      "scale state", Kokkos::RangePolicy<ExecutionSpace>(0, size),
+      KOKKOS_LAMBDA(const int i) { ptr[i] *= fac; });
+}
 
-double Particle::ParticleContainer::get_min_value_of_state(Particle::State state) const
+void Particle::ParticleContainer::scale_state(
+    double fac, ParticleState state, std::optional<ParticleSpace> space_option)
 {
   FOUR_C_ASSERT(storedstates_.contains(state), "particle state '{}' not stored in container!",
-      enum_to_state_name(state));
+      EnumTools::enum_name(state));
+
+  if (particlestored_ <= 0) return;
+
+  ParticleSpace space =
+      space_option.value_or(is_sync_device(state) ? ParticleSpace::Device : ParticleSpace::Host);
+  double* state_ptr = get_ptr_to_state_writable(state, 0, space);
+  const int size = particlestored_ * statedim_[static_cast<int>(state)];
+
+  if (space == ParticleSpace::Device)
+    scale_kernel<Kokkos::DefaultExecutionSpace>(size, fac, state_ptr);
+  else if (space == ParticleSpace::Host)
+    scale_kernel<Kokkos::Serial>(size, fac, state_ptr);
+}
+
+template <class ExecutionSpace>
+void update_kernel(int size, double facA, double* ptrA, double facB, const double* ptrB)
+{
+  Kokkos::parallel_for(
+      "update state", Kokkos::RangePolicy<ExecutionSpace>(0, size),
+      KOKKOS_LAMBDA(const int i) { ptrA[i] = facA * ptrA[i] + facB * ptrB[i]; });
+}
+
+void Particle::ParticleContainer::update_state(double facA, ParticleState stateA, double facB,
+    ParticleState stateB, std::optional<ParticleSpace> space_option)
+{
+  FOUR_C_ASSERT(stateA != stateB,
+      "adding scaled particle state '{}' to itself is not allowed. Use "
+      "scale_state instead!",
+      EnumTools::enum_name(stateA));
+
+  FOUR_C_ASSERT(storedstates_.contains(stateA), "particle state '{}' not stored in container!",
+      EnumTools::enum_name(stateA));
+
+  FOUR_C_ASSERT(storedstates_.contains(stateB), "particle state '{}' not stored in container!",
+      EnumTools::enum_name(stateB));
+
+  FOUR_C_ASSERT(statedim_[static_cast<int>(stateA)] == statedim_[static_cast<int>(stateB)],
+      "dimensions of states do not match!");
+
+  if (particlestored_ <= 0) return;
+
+  ParticleSpace space = space_option.value_or(is_sync_device(stateA) and is_sync_device(stateB)
+                                                  ? ParticleSpace::Device
+                                                  : ParticleSpace::Host);
+  const double* state_b_ptr = get_ptr_to_state(stateB, 0, space);
+  double* state_a_ptr = get_ptr_to_state_writable(stateA, 0, space);
+  const int size = particlestored_ * statedim_[static_cast<int>(stateA)];
+
+  if (space == ParticleSpace::Device)
+    update_kernel<Kokkos::DefaultExecutionSpace>(size, facA, state_a_ptr, facB, state_b_ptr);
+  else if (space == ParticleSpace::Host)
+    update_kernel<Kokkos::Serial>(size, facA, state_a_ptr, facB, state_b_ptr);
+}
+
+template <class ExecutionSpace>
+void set_kernel(int size, int dim, double* val, double* ptr)
+{
+  Kokkos::parallel_for(
+      "set state", Kokkos::RangePolicy<ExecutionSpace>(0, size), KOKKOS_LAMBDA(const int i) {
+        for (int j = 0; j < dim; ++j) ptr[i * dim + j] = val[j];
+      });
+}
+
+void Particle::ParticleContainer::set_state(
+    std::vector<double> val, ParticleState state, std::optional<ParticleSpace> space_option)
+{
+  FOUR_C_ASSERT(storedstates_.contains(state), "particle state '{}' not stored in container!",
+      EnumTools::enum_name(state));
+
+  FOUR_C_ASSERT(statedim_[static_cast<int>(state)] == static_cast<int>(val.size()),
+      "dimensions of states do not match!");
+
+  if (particlestored_ <= 0) return;
+
+  ParticleSpace space =
+      space_option.value_or(is_sync_device(state) ? ParticleSpace::Device : ParticleSpace::Host);
+  double* state_ptr = get_ptr_to_state_writable(state, 0, space, false);
+  const int dim = statedim_[static_cast<int>(state)];
+
+  if (space == ParticleSpace::Device)
+  {
+    Kokkos::View<double*> val_view("values to set", val.size());
+
+    Kokkos::deep_copy(
+        val_view, Kokkos::View<double*, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>>(
+                      val.data(), val.size()));
+    set_kernel<Kokkos::DefaultExecutionSpace>(particlestored_, dim, val_view.data(), state_ptr);
+    Kokkos::fence();
+  }
+  else if (space == ParticleSpace::Host)
+  {
+    set_kernel<Kokkos::Serial>(particlestored_, dim, val.data(), state_ptr);
+  }
+}
+
+template <class ExecutionSpace>
+void clear_kernel(int size, double* ptr)
+{
+  Kokkos::parallel_for(
+      "clear state", Kokkos::RangePolicy<ExecutionSpace>(0, size),
+      KOKKOS_LAMBDA(const int i) { ptr[i] = 0.0; });
+}
+
+void Particle::ParticleContainer::clear_state(
+    ParticleState state, std::optional<ParticleSpace> space_option)
+{
+  FOUR_C_ASSERT(storedstates_.contains(state), "particle state '{}' not stored in container!",
+      EnumTools::enum_name(state));
+
+  if (particlestored_ <= 0) return;
+
+  ParticleSpace space =
+      space_option.value_or(is_sync_device(state) ? ParticleSpace::Device : ParticleSpace::Host);
+  double* state_ptr = get_ptr_to_state_writable(state, 0, space, false);
+  const int size = particlestored_ * statedim_[static_cast<int>(state)];
+
+  if (space == ParticleSpace::Device)
+    clear_kernel<Kokkos::DefaultExecutionSpace>(size, state_ptr);
+  else if (space == ParticleSpace::Host)
+    clear_kernel<Kokkos::Serial>(size, state_ptr);
+}
+
+template <class ExecutionSpace>
+double min_kernel(int size, const double* ptr)
+{
+  double min_ = 0.;
+
+  Kokkos::parallel_reduce(
+      "min state value", Kokkos::RangePolicy<ExecutionSpace>(0, size),
+      KOKKOS_LAMBDA(const int i, double& local_min) {
+        if (ptr[i] < local_min) local_min = ptr[i];
+      },
+      Kokkos::Min<double>(min_));
+
+  return min_;
+}
+
+double Particle::ParticleContainer::get_min_value_of_state(
+    ParticleState state, std::optional<ParticleSpace> space_option) const
+{
+  FOUR_C_ASSERT(storedstates_.contains(state), "particle state '{}' not stored in container!",
+      EnumTools::enum_name(state));
 
   if (particlestored_ <= 0) return 0.0;
 
-  const double* state_ptr = get_ptr_to_state(state);
-  double min = state_ptr[0];
+  ParticleSpace space =
+      space_option.value_or(is_sync_device(state) ? ParticleSpace::Device : ParticleSpace::Host);
+  const double* state_ptr = get_ptr_to_state(state, space);
+  const int size = particlestored_ * statedim_[static_cast<int>(state)];
+  double min = 0.;
 
-  for (int i = 1; i < (particlestored_ * statedim_[static_cast<int>(state)]); ++i)
-    min = std::min(min, state_ptr[i]);
+  if (space == ParticleSpace::Device)
+    min = min_kernel<Kokkos::DefaultExecutionSpace>(size, state_ptr);
+  else if (space == ParticleSpace::Host)
+    min = min_kernel<Kokkos::Serial>(size, state_ptr);
 
   return min;
 }
 
-double Particle::ParticleContainer::get_max_value_of_state(Particle::State state) const
+template <class ExecutionSpace>
+double max_kernel(int size, const double* ptr)
+{
+  double max_ = 0.;
+
+  Kokkos::parallel_reduce(
+      "max state value", Kokkos::RangePolicy<ExecutionSpace>(0, size),
+      KOKKOS_LAMBDA(const int i, double& local_max) {
+        if (ptr[i] > local_max) local_max = ptr[i];
+      },
+      Kokkos::Max<double>(max_));
+
+  return max_;
+}
+
+double Particle::ParticleContainer::get_max_value_of_state(
+    ParticleState state, std::optional<ParticleSpace> space_option) const
 {
   FOUR_C_ASSERT(storedstates_.contains(state), "particle state '{}' not stored in container!",
-      enum_to_state_name(state));
+      EnumTools::enum_name(state));
 
   if (particlestored_ <= 0) return 0.0;
 
-  const double* state_ptr = get_ptr_to_state(state);
-  double max = state_ptr[0];
+  ParticleSpace space =
+      space_option.value_or(is_sync_device(state) ? ParticleSpace::Device : ParticleSpace::Host);
+  const double* state_ptr = get_ptr_to_state(state, space);
+  const int size = particlestored_ * statedim_[static_cast<int>(state)];
+  double max = 0.;
 
-  for (int i = 1; i < (particlestored_ * statedim_[static_cast<int>(state)]); ++i)
-    max = std::max(max, state_ptr[i]);
+  if (space == ParticleSpace::Device)
+    max = max_kernel<Kokkos::DefaultExecutionSpace>(size, state_ptr);
+  else if (space == ParticleSpace::Host)
+    max = max_kernel<Kokkos::Serial>(size, state_ptr);
 
   return max;
+}
+
+void Particle::ParticleContainer::init_state_dual(ParticleState state) const
+{
+  const int state_idx = static_cast<int>(state);
+
+  if (states_->is_dual_valid_[state_idx]) return;
+  Kokkos::View<double*> device_view = Kokkos::create_mirror_view_and_copy(
+      Kokkos::DefaultExecutionSpace::memory_space(), states_->host_[state_idx]);
+  states_->dual_[state_idx] = Kokkos::DualView<double*>(device_view, states_->host_[state_idx]);
+  states_->is_dual_valid_[state_idx] = true;
+}
+
+bool Particle::ParticleContainer::is_sync_host(ParticleState state) const
+{
+  const int state_idx = static_cast<int>(state);
+
+  if (!states_->is_dual_valid_[state_idx]) return true;
+  return states_->dual_[state_idx].need_sync<Kokkos::DefaultExecutionSpace>() ||
+         !states_->dual_[state_idx].need_sync<Kokkos::HostSpace>();
+}
+
+bool Particle::ParticleContainer::is_sync_device(ParticleState state) const
+{
+  const int state_idx = static_cast<int>(state);
+
+  if (!states_->is_dual_valid_[state_idx]) return false;
+  return states_->dual_[state_idx].need_sync<Kokkos::HostSpace>() ||
+         !states_->dual_[state_idx].need_sync<Kokkos::DefaultExecutionSpace>();
 }
 
 FOUR_C_NAMESPACE_CLOSE

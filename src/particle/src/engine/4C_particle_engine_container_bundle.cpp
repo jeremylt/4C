@@ -66,7 +66,7 @@ void Particle::ParticleContainerBundle::setup(
 Particle::ConstParticleContainerBundleStatePtrs&
 Particle::ParticleContainerBundle::try_get_ptrs_to_state(ParticleState state,
     std::optional<std::set<ParticleType>> types_option,
-    std::optional<ParticleStatus> status_optional) const
+    std::optional<ParticleStatus> status_optional, ParticleSpace space) const
 {
   const int state_idx = static_cast<int>(state);
   const std::set<ParticleType> types = types_option.value_or(storedtypes_);
@@ -96,12 +96,12 @@ Particle::ParticleContainerBundle::try_get_ptrs_to_state(ParticleState state,
       conststates_[state_idx][type_idx][static_cast<int>(ParticleStatus::Owned)] =
           containers_[type_idx][static_cast<int>(ParticleStatus::Owned)]
               .get()
-              ->try_get_ptr_to_state(state);
+              ->try_get_ptr_to_state(state, space);
     if (is_ghosted)
       conststates_[state_idx][type_idx][static_cast<int>(ParticleStatus::Ghosted)] =
           containers_[type_idx][static_cast<int>(ParticleStatus::Ghosted)]
               .get()
-              ->try_get_ptr_to_state(state);
+              ->try_get_ptr_to_state(state, space);
   }
   return conststates_[state_idx];
 }
@@ -109,7 +109,7 @@ Particle::ParticleContainerBundle::try_get_ptrs_to_state(ParticleState state,
 Particle::ParticleContainerBundleStatePtrs&
 Particle::ParticleContainerBundle::try_get_ptrs_to_state_writable(ParticleState state,
     std::optional<std::set<ParticleType>> types_option,
-    std::optional<ParticleStatus> status_optional)
+    std::optional<ParticleStatus> status_optional, ParticleSpace space)
 {
   const int state_idx = static_cast<int>(state);
   const std::set<ParticleType> types = types_option.value_or(storedtypes_);
@@ -139,12 +139,12 @@ Particle::ParticleContainerBundle::try_get_ptrs_to_state_writable(ParticleState 
       states_[state_idx][type_idx][static_cast<int>(ParticleStatus::Owned)] =
           containers_[type_idx][static_cast<int>(ParticleStatus::Owned)]
               .get()
-              ->try_get_ptr_to_state_writable(state);
+              ->try_get_ptr_to_state_writable(state, space);
     if (is_ghosted)
       states_[state_idx][type_idx][static_cast<int>(ParticleStatus::Ghosted)] =
           containers_[type_idx][static_cast<int>(ParticleStatus::Ghosted)]
               .get()
-              ->try_get_ptr_to_state_writable(state);
+              ->try_get_ptr_to_state_writable(state, space);
   }
   return states_[state_idx];
 }

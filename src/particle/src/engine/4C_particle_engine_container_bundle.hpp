@@ -100,7 +100,7 @@ namespace Particle
      */
     ConstParticleContainerBundleStatePtrs& try_get_ptrs_to_state(Particle::State state,
         std::optional<std::set<Particle::Type>> types_option = std::nullopt,
-        std::optional<ParticleStatus> status_optional = std::nullopt) const;
+        std::optional<ParticleStatus> status_optional = std::nullopt, ParticleSpace space = ParticleSpace::Host) const;
 
     /*!
      * \brief conditionally get read-only pointer to state of a particle at index
@@ -117,9 +117,9 @@ namespace Particle
      * \return reference to array with pointers with read-only access to particle state
      */
     inline ConstParticleContainerBundleStatePtrs& try_get_ptrs_to_state(
-        Particle::State state, ParticleStatus status) const
+        Particle::State state, ParticleStatus status, ParticleSpace space = ParticleSpace::Host) const
     {
-      return try_get_ptrs_to_state(state, std::nullopt, status);
+      return try_get_ptrs_to_state(state, std::nullopt, status, space);
     };
 
     /*!
@@ -141,7 +141,7 @@ namespace Particle
      */
     ParticleContainerBundleStatePtrs& try_get_ptrs_to_state_writable(Particle::State state,
         std::optional<std::set<Particle::Type>> types_option = std::nullopt,
-        std::optional<ParticleStatus> status_optional = std::nullopt);
+        std::optional<ParticleStatus> status_optional = std::nullopt, ParticleSpace space = ParticleSpace::Host);
 
     /*!
      * \brief conditionally get writable pointer to state of a particle at index
@@ -160,9 +160,9 @@ namespace Particle
      * \return reference to array with pointers with writable access to particle states
      */
     inline ParticleContainerBundleStatePtrs& try_get_ptrs_to_state_writable(
-        Particle::State state, ParticleStatus status)
+        Particle::State state, ParticleStatus status, ParticleSpace space = ParticleSpace::Host)
     {
-      return try_get_ptrs_to_state_writable(state, std::nullopt, status);
+      return try_get_ptrs_to_state_writable(state, std::nullopt, status, space);
     };
 
     //! @}
@@ -174,7 +174,7 @@ namespace Particle
      * \brief scale state of particles in container of owned particles of specific type
      *
      *
-     * \param[in] fac       scale factor
+     * \param[in] fac   scale factor
      * \param[in] state particle state
      * \param[in] type  particle type
      */

@@ -434,7 +434,7 @@ namespace
     particle_reference.assign(statesvectorsize_, std::vector<double>{});
 
     container_->scale_state(1.5, Particle::State::Position);
-    container_->scale_state(3.25, Particle::State::Velocity);
+    container_->scale_state(3.25, Particle::State::Velocity, Particle::Space::Device);
     container_->scale_state(0.95, Particle::State::Mass);
 
     for (int index = 0; index < 3; ++index)
@@ -454,6 +454,32 @@ namespace
       {
         particle_reference =
             create_test_particle({91.5, -3.945, 0.165}, {-23.8875, -19.435, 3.6075}, {0.475});
+      }
+
+      container_->get_particle(index, globalid, particle);
+
+      compare_particle_states(particle_reference, particle);
+    }
+
+    container_->scale_state(0.5, Particle::State::Mass, Particle::Space::Device);
+
+    for (int index = 0; index < 3; ++index)
+    {
+      SCOPED_TRACE("Particle " + std::to_string(index));
+      if (index == 0)
+      {
+        particle_reference =
+            create_test_particle({1.8, 1.05, 3.15}, {0.7475, 5.72, 12.6425}, {0.057});
+      }
+      else if (index == 1)
+      {
+        particle_reference =
+            create_test_particle({-1.575, 18.9, -12.81}, {0.8125, -69.875, 3.25}, {5.8615});
+      }
+      else if (index == 2)
+      {
+        particle_reference =
+            create_test_particle({91.5, -3.945, 0.165}, {-23.8875, -19.435, 3.6075}, {0.2375});
       }
 
       container_->get_particle(index, globalid, particle);
@@ -495,9 +521,35 @@ namespace
 
       compare_particle_states(particle_reference, particle);
     }
+
+    container_->update_state(
+        1.0, Particle::State::Position, 1.0, Particle::State::Velocity, Particle::Space::Device);
+
+    for (int index = 0; index < 3; ++index)
+    {
+      SCOPED_TRACE("Particle " + std::to_string(index));
+      if (index == 0)
+      {
+        particle_reference = create_test_particle({1.545, 3.34, 7.935}, {0.23, 1.76, 3.89}, {0.12});
+      }
+      else if (index == 1)
+      {
+        particle_reference =
+            create_test_particle({-0.675, -19.65, -7.04}, {0.25, -21.5, 1.0}, {12.34});
+      }
+      else if (index == 2)
+      {
+        particle_reference =
+            create_test_particle({49.975, -11.6, 1.775}, {-7.35, -5.98, 1.11}, {0.5});
+      }
+
+      container_->get_particle(index, globalid, particle);
+
+      compare_particle_states(particle_reference, particle);
+    }
   }
 
-  TEST_F(ParticleContainerTest, set_state)
+  TEST_F(ParticleContainerTest, SetState)
   {
     int globalid(0);
 
@@ -522,7 +574,7 @@ namespace
 
     container_->set_state(pos, Particle::State::Position);
     container_->set_state(vel, Particle::State::Velocity);
-    container_->set_state(mass, Particle::State::Mass);
+    container_->set_state(mass, Particle::State::Mass, Particle::Space::Device);
 
     for (int index = 0; index < 3; ++index)
     {
@@ -544,7 +596,7 @@ namespace
 
     container_->clear_state(Particle::State::Position);
     container_->clear_state(Particle::State::Velocity);
-    container_->clear_state(Particle::State::Mass);
+    container_->clear_state(Particle::State::Mass, Particle::Space::Device);
 
     for (int index = 0; index < 3; ++index)
     {
@@ -555,14 +607,17 @@ namespace
 
   TEST_F(ParticleContainerTest, GetMinValueOfState)
   {
-    EXPECT_NEAR(container_->get_min_value_of_state(Particle::State::Mass), 0.12, 1e-14);
     EXPECT_NEAR(container_->get_min_value_of_state(Particle::State::Position), -8.54, 1e-14);
+    EXPECT_NEAR(container_->get_min_value_of_state(Particle::State::Mass, Particle::Space::Device),
+        0.12, 1e-14);
   }
 
   TEST_F(ParticleContainerTest, GetMaxValueOfState)
   {
     EXPECT_NEAR(container_->get_max_value_of_state(Particle::State::Mass), 12.34, 1e-14);
-    EXPECT_NEAR(container_->get_max_value_of_state(Particle::State::Position), 61.0, 1e-14);
+    EXPECT_NEAR(
+        container_->get_max_value_of_state(Particle::State::Position, Particle::Space::Device),
+        61.0, 1e-14);
   }
 
   TEST_F(ParticleContainerTest, GetStoredStates)
