@@ -64,6 +64,17 @@ namespace Particle
   //! collection of particle containers indexed by particle type enum and particle status enum
   using TypeStatusContainers = std::vector<std::vector<std::shared_ptr<ParticleContainer>>>;
 
+  //! multidimensional array of pointers to state data of particle container bundles
+  using ConstTypeStatusStatePointerBundle =
+      const double *
+      [static_cast<int>(
+          ParticleStatus::Uninitialized)][static_cast<int>(ParticleType::Uninitialized)];
+
+  //! multidimensional array of pointers to state data of particle container bundles
+  using TypeStatusStatePointerBundle =
+      double * [static_cast<int>(
+                   ParticleStatus::Uninitialized)][static_cast<int>(ParticleType::Uninitialized)];
+
   //! shared pointer to particle container bundle
   using ParticleContainerBundleShrdPtr = std::shared_ptr<ParticleContainerBundle>;
 

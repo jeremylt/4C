@@ -46,13 +46,16 @@ namespace Particle
     //! constructor
     explicit ParticleContainerBundle();
 
+    //! destructor
+    ~ParticleContainerBundle();
+
     /*!
      * \brief setup particle container bundle
      *
      *
      * \param[in] particlestatestotypes particle types and corresponding states
      */
-    void setup(const std::map<Particle::Type, std::set<Particle::State>>& particlestatestotypes);
+    void setup(const std::map<ParticleType, std::set<ParticleState>>& particlestatestotypes);
 
     /*!
      * \brief get particle types of stored containers
@@ -60,7 +63,7 @@ namespace Particle
      *
      * \return reference to particle types of stored containers
      */
-    inline const std::set<Particle::Type>& get_particle_types() const { return storedtypes_; };
+    inline const std::set<ParticleType>& get_particle_types() const { return storedtypes_; };
 
     /*!
      * \brief get specific particle container
@@ -71,14 +74,75 @@ namespace Particle
      *
      * @return pointer to particle container
      */
-    inline ParticleContainer* get_specific_container(
-        Particle::Type type, Particle::Status status) const
+    inline ParticleContainer* get_specific_container(ParticleType type, ParticleStatus status) const
     {
       FOUR_C_ASSERT(storedtypes_.contains(type), "container for particle type '{}' not stored!",
           enum_to_type_name(type));
 
       return (containers_[static_cast<int>(type)])[static_cast<int>(status)].get();
     };
+
+    /*!
+     * \brief get multidimensional array with read-only pointers to all containers for a specific
+     * state
+     *
+     * \note A nullptr indicates the bundle does not contain a container of the specific type and
+     * status. All pointers must be checked before using.
+     *
+     *
+     * \param[out] stateptrs array of state pointers in target memory space
+     * \param[in] state particle state
+     * \param[in] space memory space to access
+     */
+    void get_ptr_to_state_all_containers(ConstTypeStatusStatePointerBundle* stateptrs,
+        ParticleState state, ParticleSpace space = ParticleSpace::Host) const;
+
+    /*!
+     * \brief get multidimensional array with read-only pointers to all containers for a specific
+     * state
+     *
+     * \note A nullptr indicates the bundle does not contain a container of the specific type and
+     * status or the container does not contain this state. All pointers must be checked before
+     * using.
+     *
+     *
+     * \param[out] stateptrs array of state pointers in target memory space
+     * \param[in] state particle state
+     * \param[in] space memory space to access
+     */
+    void try_get_ptr_to_state_all_containers(ConstTypeStatusStatePointerBundle* stateptrs,
+        ParticleState state, ParticleSpace space = ParticleSpace::Host) const;
+
+    /*!
+     * \brief get multidimensional array with writable pointers to all containers for a specific
+     * state
+     *
+     * \note A nullptr indicates the bundle does not contain a container of the specific type and
+     * status. All pointers must be checked before using.
+     *
+     *
+     * \param[in] state particle state
+     * \param[in] space memory space to access
+     * \param[out] stateptrs array of state pointers in target memory space
+     */
+    void get_ptr_to_state_writable_all_containers(TypeStatusStatePointerBundle* stateptrs,
+        ParticleState state, ParticleSpace space = ParticleSpace::Host);
+
+    /*!
+     * \brief get multidimensional array with writable pointers to all containers for a specific
+     * state
+     *
+     * \note A nullptr indicates the bundle does not contain a container of the specific type and
+     * status or the container does not contain this state. All pointers must be checked before
+     * using.
+     *
+     *
+     * \param[in] state particle state
+     * \param[in] space memory space to access
+     * \param[out] stateptrs array of state pointers in target memory space
+     */
+    void try_get_ptr_to_state_writable_all_containers(TypeStatusStatePointerBundle* stateptrs,
+        ParticleState state, ParticleSpace space = ParticleSpace::Host);
 
     //! \name manipulate particle states of owned particles of specific type
     //! @{
@@ -92,7 +156,7 @@ namespace Particle
      * \param[in] type  particle type
      */
     inline void scale_state_specific_container(
-        double fac, Particle::State state, Particle::Type type) const
+        double fac, ParticleState state, ParticleType type) const
     {
       FOUR_C_ASSERT(storedtypes_.contains(type), "container for particle type '{}' not stored!",
           enum_to_type_name(type));
@@ -112,8 +176,8 @@ namespace Particle
      * \param[in] stateB second particle state
      * \param[in] type   particle type
      */
-    inline void update_state_specific_container(double facA, Particle::State stateA, double facB,
-        Particle::State stateB, Particle::Type type) const
+    inline void update_state_specific_container(double facA, ParticleState stateA, double facB,
+        ParticleState stateB, ParticleType type) const
     {
       FOUR_C_ASSERT(storedtypes_.contains(type), "container for particle type '{}' not stored!",
           enum_to_type_name(type));
@@ -131,7 +195,7 @@ namespace Particle
      * \param[in] type  particle type
      */
     inline void set_state_specific_container(
-        std::vector<double> val, Particle::State state, Particle::Type type) const
+        std::vector<double> val, ParticleState state, ParticleType type) const
     {
       FOUR_C_ASSERT(storedtypes_.contains(type), "container for particle type '{}' not stored!",
           enum_to_type_name(type));
@@ -147,7 +211,7 @@ namespace Particle
      * \param[in] state particle state
      * \param[in] type  particle type
      */
-    inline void clear_state_specific_container(Particle::State state, Particle::Type type) const
+    inline void clear_state_specific_container(ParticleState state, ParticleType type) const
     {
       FOUR_C_ASSERT(storedtypes_.contains(type), "container for particle type '{}' not stored!",
           enum_to_type_name(type));
@@ -167,7 +231,7 @@ namespace Particle
      * \param[in] fac   scale factor
      * \param[in] state particle state
      */
-    inline void scale_state_all_containers(double fac, Particle::State state) const
+    inline void scale_state_all_containers(double fac, ParticleState state) const
     {
       for (const auto& type : storedtypes_)
         ((containers_[static_cast<int>(type)])[static_cast<int>(Status::Owned)])
@@ -185,7 +249,7 @@ namespace Particle
      * \param[in] stateB second particle state
      */
     inline void update_state_all_containers(
-        double facA, Particle::State stateA, double facB, Particle::State stateB) const
+        double facA, ParticleState stateA, double facB, ParticleState stateB) const
     {
       for (const auto& type : storedtypes_)
         ((containers_[static_cast<int>(type)])[static_cast<int>(Status::Owned)])
@@ -199,7 +263,7 @@ namespace Particle
      * \param[in] val   particle state value
      * \param[in] state particle state
      */
-    inline void set_state_all_containers(std::vector<double> val, Particle::State state) const
+    inline void set_state_all_containers(std::vector<double> val, ParticleState state) const
     {
       for (const auto& type : storedtypes_)
         ((containers_[static_cast<int>(type)])[static_cast<int>(Status::Owned)])
@@ -212,7 +276,7 @@ namespace Particle
      *
      * \param[in] state particle state
      */
-    inline void clear_state_all_containers(Particle::State state) const
+    inline void clear_state_all_containers(ParticleState state) const
     {
       for (const auto& type : storedtypes_)
         ((containers_[static_cast<int>(type)])[static_cast<int>(Status::Owned)])
@@ -231,7 +295,7 @@ namespace Particle
      * \param[in] status particle status
      */
     inline void check_and_decrease_size_all_containers_of_specific_status(
-        Particle::Status status) const
+        ParticleStatus status) const
     {
       for (const auto& type : storedtypes_)
         ((containers_[static_cast<int>(type)])[static_cast<int>(status)])
@@ -244,7 +308,7 @@ namespace Particle
      *
      * \param[in] status particle status
      */
-    inline void clear_all_containers_of_specific_status(Particle::Status status) const
+    inline void clear_all_containers_of_specific_status(ParticleStatus status) const
     {
       for (const auto& type : storedtypes_)
         ((containers_[static_cast<int>(type)])[static_cast<int>(status)])->clear_container();
@@ -276,10 +340,41 @@ namespace Particle
 
    private:
     //! set of particle types of stored containers
-    std::set<Particle::Type> storedtypes_;
+    std::set<ParticleType> storedtypes_;
 
     //! collection of particle containers indexed by particle type enum and particle status enum
     TypeStatusContainers containers_;
+
+    //! implementation data for returning TypeStatusStatePointerBundle
+    struct TypeStatusStateImpl;
+    std::unique_ptr<TypeStatusStateImpl> typestatusstate_;
+
+    /*!
+     * \brief initialize DualView for on-device computation
+     *
+     * \note This method is labeled as const because it does not change the _logical_ state of the
+     * ParticleContainerBundle, only the representation of the data.
+     *
+     *
+     * \param[in] state particle state
+     *
+     * \return none
+     */
+    void init_state_dual(ParticleState state) const;
+
+    /*!
+     * \brief internal helper to get get multidimensional array with pointers to all containers for
+     * a specific state
+     *
+     * \note this is only called by `[try_]get_ptr_to_state[_writable]_all_containers`
+     *
+     *
+     * \param[out] stateptrs array of state pointers in target memory space
+     * \param[in]  state     particle state
+     * \param[in]  space     memory space to access
+     */
+    inline void get_ptr_to_state_all_containers_internal(
+        TypeStatusStatePointerBundle* stateptrs, ParticleState state, ParticleSpace space) const;
   };
 
 }  // namespace Particle

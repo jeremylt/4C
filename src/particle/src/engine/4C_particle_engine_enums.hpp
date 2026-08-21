@@ -166,7 +166,7 @@ namespace Particle
     DirichletPhase,  //!< particle type for dirichlet phase particles (open boundary)
     NeumannPhase,    //!< particle type for neumann phase particles (open boundary)
     PDPhase,         //!< particle type for peridynamic phase particles
-    Uninitialized    //!< not yet defined particle type
+    Uninitialized    //!< not yet defined particle type, last value in enum
     /*---------------------------------------------------------------------------*/
   };
 
@@ -211,7 +211,7 @@ namespace Particle
   {
     Owned,         //!< particle status for particles being owned on processors
     Ghosted,       //!< particle status for particles being ghosted on processors
-    Uninitialized  //!< not yet defined particle status
+    Uninitialized  //!< not yet defined particle status, last value in enum
   };
 
   /*!
