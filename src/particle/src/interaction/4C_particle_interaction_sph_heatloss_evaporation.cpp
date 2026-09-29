@@ -13,6 +13,7 @@
 #include "4C_particle_interaction_utils.hpp"
 #include "4C_utils_exceptions.hpp"
 
+#include <Kokkos_Core.hpp>
 #include <Teuchos_StandardParameterEntryValidators.hpp>
 #include <Teuchos_TimeMonitor.hpp>
 
@@ -78,41 +79,45 @@ void Particle::SPHHeatLossEvaporation::evaluate_evaporation_induced_heat_loss() 
 
   // get pointers to states
   const int statedim = Particle::enum_to_state_dim(ParticleState::Position);
-  const double* dens = container_i->get_ptr_to_state(ParticleState::Density);
-  const double* temp = container_i->get_ptr_to_state(ParticleState::Temperature);
-  const double* cfg = container_i->get_ptr_to_state(ParticleState::ColorfieldGradient);
-  const double* ifn = container_i->get_ptr_to_state(ParticleState::InterfaceNormal);
-  double* tempdot = container_i->get_ptr_to_state_writable(ParticleState::TemperatureDot);
+  const double* dens = container_i->get_ptr_to_state(ParticleState::Density, ParticleSpace::Device);
+  const double* temp =
+      container_i->get_ptr_to_state(ParticleState::Temperature, ParticleSpace::Device);
+  const double* cfg =
+      container_i->get_ptr_to_state(ParticleState::ColorfieldGradient, ParticleSpace::Device);
+  const double* ifn =
+      container_i->get_ptr_to_state(ParticleState::InterfaceNormal, ParticleSpace::Device);
+  double* tempdot =
+      container_i->get_ptr_to_state_writable(ParticleState::TemperatureDot, ParticleSpace::Device);
 
   // iterate over particles in container
-  for (int particle_i = 0; particle_i < container_i->particles_stored(); ++particle_i)
-  {
-    const double* dens_i = &dens[particle_i];
-    const double* temp_i = &temp[particle_i];
-    const double* cfg_i = &cfg[particle_i * statedim];
-    const double* ifn_i = &ifn[particle_i * statedim];
-    double* tempdot_i = &tempdot[particle_i];
+  Kokkos::parallel_for(
+      Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, container_i->particles_stored()),
+      KOKKOS_CLASS_LAMBDA(const int particle_i) {
+        const double* dens_i = &dens[particle_i];
+        const double* temp_i = &temp[particle_i];
+        const double* cfg_i = &cfg[particle_i * statedim];
+        const double* ifn_i = &ifn[particle_i * statedim];
+        double* tempdot_i = &tempdot[particle_i];
 
-    // evaluation only for non-zero interface normal
-    if (not(ParticleUtils::vec_norm_two(ifn_i) > 0.0)) continue;
+        // evaluation only for non-zero interface normal
+        if ((ParticleUtils::vec_norm_two(ifn_i) > 0.0) and (temp_i[0] > recoilboilingtemp_))
+        {
+          // compute evaporation induced recoil pressure
+          const double recoil_press_i =
+              recoil_pfac_ * std::exp(-recoil_tfac_ * (1.0 / temp_i[0] - 1.0 / recoilboilingtemp_));
 
-    // heat loss contribution only for temperature above boiling temperature
-    if (not(temp_i[0] > recoilboilingtemp_)) continue;
+          // compute vapor mass flow
+          const double m_dot_i =
+              heatloss_pfac_ * recoil_press_i * std::sqrt(heatloss_tfac_ / temp_i[0]);
 
-    // compute evaporation induced recoil pressure
-    const double recoil_press_i =
-        recoil_pfac_ * std::exp(-recoil_tfac_ * (1.0 / temp_i[0] - 1.0 / recoilboilingtemp_));
+          // evaluate specific enthalpy
+          const double specificenthalpy_i = thermalCapacity * (temp_i[0] - enthalpyreftemp_);
 
-    // compute vapor mass flow
-    const double m_dot_i = heatloss_pfac_ * recoil_press_i * std::sqrt(heatloss_tfac_ / temp_i[0]);
-
-    // evaluate specific enthalpy
-    const double specificenthalpy_i = thermalCapacity * (temp_i[0] - enthalpyreftemp_);
-
-    // add contribution of heat loss
-    tempdot_i[0] -= ParticleUtils::vec_norm_two(cfg_i) * m_dot_i *
-                    (latentheat_ + specificenthalpy_i) * invThermalCapacity / dens_i[0];
-  }
+          // add contribution of heat loss
+          tempdot_i[0] -= ParticleUtils::vec_norm_two(cfg_i) * m_dot_i *
+                          (latentheat_ + specificenthalpy_i) * invThermalCapacity / dens_i[0];
+        }
+      });
 }
 
 FOUR_C_NAMESPACE_CLOSE

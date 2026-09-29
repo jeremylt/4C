@@ -15,6 +15,8 @@
 
 #include "4C_utils_exceptions.hpp"
 
+#include <Kokkos_Core.hpp>
+
 #include <cmath>
 #include <numbers>
 
@@ -51,7 +53,7 @@ namespace Particle::ParticleUtils
    *  when you use this helper function there will be no need to explicitly insert the class type
    */
   template <int n, class T>
-  T constexpr pow(T const x)
+  KOKKOS_INLINE_FUNCTION T constexpr pow(T const x)
   {
     return Helper<T, n>::pow(x);
   }
@@ -63,7 +65,7 @@ namespace Particle::ParticleUtils
    *  \brief clear vector c
    */
   template <class T>
-  inline void vec_clear(T* c)
+  KOKKOS_INLINE_FUNCTION void vec_clear(T* c)
   {
     c[0] = 0.0;
     c[1] = 0.0;
@@ -74,7 +76,7 @@ namespace Particle::ParticleUtils
    *  \brief set vector a to vector c
    */
   template <class T>
-  inline void vec_set(T* c, const T* a)
+  KOKKOS_INLINE_FUNCTION void vec_set(T* c, const T* a)
   {
     c[0] = a[0];
     c[1] = a[1];
@@ -85,7 +87,7 @@ namespace Particle::ParticleUtils
    *  \brief add vector a to vector c
    */
   template <class T>
-  inline void vec_add(T* c, const T* a)
+  KOKKOS_INLINE_FUNCTION void vec_add(T* c, const T* a)
   {
     c[0] += a[0];
     c[1] += a[1];
@@ -96,7 +98,7 @@ namespace Particle::ParticleUtils
    *  \brief subtract vector a from vector c
    */
   template <class T>
-  inline void vec_sub(T* c, const T* a)
+  KOKKOS_INLINE_FUNCTION void vec_sub(T* c, const T* a)
   {
     c[0] -= a[0];
     c[1] -= a[1];
@@ -107,7 +109,7 @@ namespace Particle::ParticleUtils
    *  \brief scale vector c
    */
   template <class T>
-  inline void vec_scale(T* c, const T fac)
+  KOKKOS_INLINE_FUNCTION void vec_scale(T* c, const T fac)
   {
     c[0] *= fac;
     c[1] *= fac;
@@ -118,7 +120,7 @@ namespace Particle::ParticleUtils
    *  \brief scale vector a and set to vector c
    */
   template <class T>
-  inline void vec_set_scale(T* c, const T fac, const T* a)
+  KOKKOS_INLINE_FUNCTION void vec_set_scale(T* c, const T fac, const T* a)
   {
     c[0] = fac * a[0];
     c[1] = fac * a[1];
@@ -129,7 +131,7 @@ namespace Particle::ParticleUtils
    *  \brief scale vector a and add to vector c
    */
   template <class T>
-  inline void vec_add_scale(T* c, const T fac, const T* a)
+  KOKKOS_INLINE_FUNCTION void vec_add_scale(T* c, const T fac, const T* a)
   {
     c[0] += fac * a[0];
     c[1] += fac * a[1];
@@ -140,7 +142,7 @@ namespace Particle::ParticleUtils
    *  \brief set cross product of vector a and vector b to vector c
    */
   template <class T>
-  inline void vec_set_cross(T* c, const T* a, const T* b)
+  KOKKOS_INLINE_FUNCTION void vec_set_cross(T* c, const T* a, const T* b)
   {
     c[0] = a[1] * b[2] - a[2] * b[1];
     c[1] = a[2] * b[0] - a[0] * b[2];
@@ -151,7 +153,7 @@ namespace Particle::ParticleUtils
    *  \brief add cross product of vector a and vector b to vector c
    */
   template <class T>
-  inline void vec_add_cross(T* c, const T* a, const T* b)
+  KOKKOS_INLINE_FUNCTION void vec_add_cross(T* c, const T* a, const T* b)
   {
     c[0] += a[1] * b[2] - a[2] * b[1];
     c[1] += a[2] * b[0] - a[0] * b[2];
@@ -162,7 +164,7 @@ namespace Particle::ParticleUtils
    *  \brief return scalar product of vector a and vector b
    */
   template <class T>
-  inline T vec_dot(const T* a, const T* b)
+  KOKKOS_INLINE_FUNCTION T vec_dot(const T* a, const T* b)
   {
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   }
@@ -171,7 +173,7 @@ namespace Particle::ParticleUtils
    *  \brief return 2-norm of vector a
    */
   template <class T>
-  inline T vec_norm_two(const T* a)
+  KOKKOS_INLINE_FUNCTION T vec_norm_two(const T* a)
   {
     return std::sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
   }
@@ -185,7 +187,7 @@ namespace Particle::ParticleUtils
    *  \brief construct orthogonal unit surface tangent vectors from given unit surface normal
    */
   template <class T>
-  inline void unit_surface_tangents(const T* n, T* t1, T* t2)
+  KOKKOS_INLINE_FUNCTION void unit_surface_tangents(const T* n, T* t1, T* t2)
   {
 #ifdef FOUR_C_ENABLE_ASSERTIONS
     if (std::abs(1.0 - vec_norm_two(n)) > 1.0e-14)
@@ -224,7 +226,8 @@ namespace Particle::ParticleUtils
   /**
    *  \brief linear transition function
    */
-  inline double lin_trans(const double x, const double x1, const double x2)
+  KOKKOS_INLINE_FUNCTION
+  double lin_trans(const double x, const double x1, const double x2)
   {
 #ifdef FOUR_C_ENABLE_ASSERTIONS
     if (not(std::abs(x2 - x1) > 1.0e-14)) FOUR_C_THROW("danger of division by zero!");
@@ -238,7 +241,8 @@ namespace Particle::ParticleUtils
   /**
    *  \brief complementary linear transition function
    */
-  inline double comp_lin_trans(const double x, const double x1, const double x2)
+  KOKKOS_INLINE_FUNCTION
+  double comp_lin_trans(const double x, const double x1, const double x2)
   {
     return 1.0 - lin_trans(x, x1, x2);
   }

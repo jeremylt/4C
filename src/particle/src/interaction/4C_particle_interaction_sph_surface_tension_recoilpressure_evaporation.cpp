@@ -11,6 +11,7 @@
 #include "4C_particle_engine_interface.hpp"
 #include "4C_particle_interaction_utils.hpp"
 
+#include <Kokkos_Core.hpp>
 #include <Teuchos_ParameterList.hpp>
 
 FOUR_C_NAMESPACE_OPEN
@@ -47,35 +48,38 @@ void Particle::SPHRecoilPressureEvaporation::compute_recoil_pressure_contributio
 
   // get pointers to particle states
   const int statedim = Particle::enum_to_state_dim(ParticleState::Position);
-  const double* dens = container_i->get_ptr_to_state(ParticleState::Density);
-  const double* temp = container_i->get_ptr_to_state(ParticleState::Temperature);
-  const double* cfg = container_i->get_ptr_to_state(ParticleState::ColorfieldGradient);
-  const double* ifn = container_i->get_ptr_to_state(ParticleState::InterfaceNormal);
-  double* acc = container_i->get_ptr_to_state_writable(ParticleState::Acceleration);
+  const double* dens = container_i->get_ptr_to_state(ParticleState::Density, ParticleSpace::Device);
+  const double* temp =
+      container_i->get_ptr_to_state(ParticleState::Temperature, ParticleSpace::Device);
+  const double* cfg =
+      container_i->get_ptr_to_state(ParticleState::ColorfieldGradient, ParticleSpace::Device);
+  const double* ifn =
+      container_i->get_ptr_to_state(ParticleState::InterfaceNormal, ParticleSpace::Device);
+  double* acc =
+      container_i->get_ptr_to_state_writable(ParticleState::Acceleration, ParticleSpace::Device);
 
   // iterate over particles in container
-  for (int particle_i = 0; particle_i < container_i->particles_stored(); ++particle_i)
-  {
-    // get pointers to states
-    const double* dens_i = &dens[particle_i];
-    const double* temp_i = &temp[particle_i];
-    const double* cfg_i = &cfg[particle_i * statedim];
-    const double* ifn_i = &ifn[particle_i * statedim];
-    double* acc_i = &acc[particle_i * statedim];
+  Kokkos::parallel_for(
+      Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, container_i->particles_stored()),
+      KOKKOS_CLASS_LAMBDA(const int particle_i) {
+        // get pointers to states
+        const double* dens_i = &dens[particle_i];
+        const double* temp_i = &temp[particle_i];
+        const double* cfg_i = &cfg[particle_i * statedim];
+        const double* ifn_i = &ifn[particle_i * statedim];
+        double* acc_i = &acc[particle_i * statedim];
 
-    // evaluation only for non-zero interface normal
-    if (not(ParticleUtils::vec_norm_two(ifn_i) > 0.0)) continue;
+        // evaluation only for non-zero interface normal
+        if ((ParticleUtils::vec_norm_two(ifn_i) > 0.0) and (temp_i[0] > recoilboilingtemp_))
+        {
+          // compute evaporation induced recoil pressure
+          const double recoil_press_i =
+              recoil_pfac_ * std::exp(-recoil_tfac_ * (1.0 / temp_i[0] - 1.0 / recoilboilingtemp_));
 
-    // recoil pressure contribution only for temperature above boiling temperature
-    if (not(temp_i[0] > recoilboilingtemp_)) continue;
-
-    // compute evaporation induced recoil pressure
-    const double recoil_press_i =
-        recoil_pfac_ * std::exp(-recoil_tfac_ * (1.0 / temp_i[0] - 1.0 / recoilboilingtemp_));
-
-    // add contribution to acceleration
-    ParticleUtils::vec_add_scale(acc_i, -recoil_press_i / dens_i[0], cfg_i);
-  }
+          // add contribution to acceleration
+          ParticleUtils::vec_add_scale(acc_i, -recoil_press_i / dens_i[0], cfg_i);
+        }
+      });
 }
 
 FOUR_C_NAMESPACE_CLOSE

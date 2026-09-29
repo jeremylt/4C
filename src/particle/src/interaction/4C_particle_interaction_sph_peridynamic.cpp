@@ -20,6 +20,7 @@
 #include "4C_utils_exceptions.hpp"
 #include "4C_utils_std23_unreachable.hpp"
 
+#include <Kokkos_Core.hpp>
 #include <Teuchos_StandardParameterEntryValidators.hpp>
 #include <Teuchos_TimeMonitor.hpp>
 
@@ -514,25 +515,32 @@ void Particle::SPHPeridynamic::compute_acceleration() const
   const int statedim = container->get_state_dim(ParticleState::Acceleration);
 
   // get pointer to particle states
-  const double* radius = container->get_ptr_to_state(ParticleState::Radius);
-  const double* mass = container->get_ptr_to_state(ParticleState::Mass);
-  const double* force = container->get_ptr_to_state(ParticleState::Force);
-  const double* moment = container->try_get_ptr_to_state(ParticleState::Moment);
-  double* acc = container->get_ptr_to_state_writable(ParticleState::Acceleration);
-  double* angacc = container->try_get_ptr_to_state_writable(ParticleState::AngularAcceleration);
+  const double* radius = container->get_ptr_to_state(ParticleState::Radius, ParticleSpace::Device);
+  const double* mass = container->get_ptr_to_state(ParticleState::Mass, ParticleSpace::Device);
+  const double* force = container->get_ptr_to_state(ParticleState::Force, ParticleSpace::Device);
+  const double* moment =
+      container->try_get_ptr_to_state(ParticleState::Moment, ParticleSpace::Device);
+  double* acc =
+      container->get_ptr_to_state_writable(ParticleState::Acceleration, ParticleSpace::Device);
+  double* angacc = container->try_get_ptr_to_state_writable(
+      ParticleState::AngularAcceleration, ParticleSpace::Device);
 
   // compute acceleration
-  for (int i = 0; i < particlestored; ++i)
-  {
-    ParticleUtils::vec_add_scale(&acc[statedim * i], (1.0 / mass[i]), &force[statedim * i]);
-  }
+  Kokkos::parallel_for(
+      Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, particlestored),
+      KOKKOS_LAMBDA(const int i) {
+        ParticleUtils::vec_add_scale(&acc[statedim * i], (1.0 / mass[i]), &force[statedim * i]);
+      });
 
   // compute angular acceleration
   if (angacc and moment)
   {
-    for (int i = 0; i < particlestored; ++i)
-      ParticleUtils::vec_add_scale(&angacc[statedim * i],
-          (5.0 / (2.0 * mass[i] * ParticleUtils::pow<2>(radius[i]))), &moment[statedim * i]);
+    Kokkos::parallel_for(
+        Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, particlestored),
+        KOKKOS_LAMBDA(const int i) {
+          ParticleUtils::vec_add_scale(&angacc[statedim * i],
+              (5.0 / (2.0 * mass[i] * ParticleUtils::pow<2>(radius[i]))), &moment[statedim * i]);
+        });
   }
 }
 
@@ -553,14 +561,15 @@ void Particle::SPHPeridynamic::damage_evaluation()
   double* pddamagevariable = container->get_ptr_to_state_writable(ParticleState::PDDamageVariable);
 
   // loop over particles in container
-  for (int particle_i = 0; particle_i < container->particles_stored(); ++particle_i)
-  {
-    const double* initialconnectedbonds_i = &initialconnectedbonds[particle_i];
-    const double* currentconnectedbonds_i = &currentconnectedbonds[particle_i];
-    double* pddamagevariable_i = &pddamagevariable[particle_i];
+  Kokkos::parallel_for(
+      Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, container->particles_stored()),
+      KOKKOS_LAMBDA(const int particle_i) {
+        const double* initialconnectedbonds_i = &initialconnectedbonds[particle_i];
+        const double* currentconnectedbonds_i = &currentconnectedbonds[particle_i];
+        double* pddamagevariable_i = &pddamagevariable[particle_i];
 
-    pddamagevariable_i[0] = 1.0 - currentconnectedbonds_i[0] / initialconnectedbonds_i[0];
-  }
+        pddamagevariable_i[0] = 1.0 - currentconnectedbonds_i[0] / initialconnectedbonds_i[0];
+      });
 }
 
 // the beta correction volume function in peridynamic
