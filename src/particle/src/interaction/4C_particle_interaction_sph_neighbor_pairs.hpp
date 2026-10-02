@@ -55,7 +55,7 @@ namespace Particle
     //! setup neighbor pair handler
     void setup(const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
         const std::shared_ptr<Particle::WallHandlerInterface> particlewallinterface,
-        const std::shared_ptr<Particle::SPHKernelBase> kernel);
+        const Particle::KernelData kernel);
 
     //! get reference to particle pair data
     inline const SPHParticlePairData& get_ref_to_particle_pair_data() const
@@ -113,8 +113,8 @@ namespace Particle
     //! interface to particle wall handler
     std::shared_ptr<Particle::WallHandlerInterface> particlewallinterface_;
 
-    //! kernel handler
-    std::shared_ptr<Particle::SPHKernelBase> kernel_;
+    //! kernel data
+    Particle::KernelData kernel_;
   };
 
 }  // namespace Particle

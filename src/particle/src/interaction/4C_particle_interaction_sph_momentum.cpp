@@ -65,7 +65,7 @@ Particle::SPHMomentum::~SPHMomentum() = default;
 void Particle::SPHMomentum::setup(
     const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
     const std::shared_ptr<Particle::WallHandlerInterface> particlewallinterface,
-    const std::shared_ptr<Particle::SPHKernelBase> kernel,
+    const Particle::KernelData kernel,
     const std::shared_ptr<Particle::MaterialHandler> particlematerial,
     const std::shared_ptr<Particle::InteractionWriter> particleinteractionwriter,
     const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
@@ -218,7 +218,7 @@ void Particle::SPHMomentum::momentum_equation_particle_contribution() const
   TEUCHOS_FUNC_TIME_MONITOR("Particle::SPHMomentum::momentum_equation_particle_contribution");
 
   // get factor from kernel space dimension
-  const int kernelfac = kernel_->kernel_space_dimension() + 2;
+  const int kernelfac = Particle::Kernel::kernel_space_dimension(kernel_) + 2;
 
   // get relevant particle pair indices
   std::vector<int> relindices;
@@ -321,12 +321,14 @@ void Particle::SPHMomentum::momentum_equation_particle_contribution() const
              Particle::TransportVelocityFormulation::GeneralizedTransportVelocity)
     {
       // modified first derivative of kernel
-      const double mod_dWdrij =
-          (mod_acc_i) ? kernel_->d_wdrij(particlepair.absdist_, kernel_->smoothing_length(rad_i[0]))
-                      : 0.0;
-      const double mod_dWdrji =
-          (mod_acc_j) ? kernel_->d_wdrij(particlepair.absdist_, kernel_->smoothing_length(rad_j[0]))
-                      : 0.0;
+      const double mod_dWdrij = (mod_acc_i)
+                                    ? Particle::Kernel::d_wdrij(kernel_, particlepair.absdist_,
+                                          Particle::Kernel::smoothing_length(kernel_, rad_i[0]))
+                                    : 0.0;
+      const double mod_dWdrji = (mod_acc_j)
+                                    ? Particle::Kernel::d_wdrij(kernel_, particlepair.absdist_,
+                                          Particle::Kernel::smoothing_length(kernel_, rad_j[0]))
+                                    : 0.0;
 
       // modified background pressure
       const double mod_bg_press_i =
@@ -350,8 +352,8 @@ void Particle::SPHMomentum::momentum_equation_particle_contribution() const
     if (material_i->artificialViscosity_ > 0.0 or material_j->artificialViscosity_ > 0.0)
     {
       // particle averaged smoothing length
-      const double h_ij =
-          0.5 * (kernel_->smoothing_length(rad_i[0]) + kernel_->smoothing_length(rad_j[0]));
+      const double h_ij = 0.5 * (Particle::Kernel::smoothing_length(kernel_, rad_i[0]) +
+                                    Particle::Kernel::smoothing_length(kernel_, rad_j[0]));
 
       // get speed of sound
       const double c_i = material_i->speed_of_sound();
@@ -378,7 +380,7 @@ void Particle::SPHMomentum::momentum_equation_particle_boundary_contribution() c
       "Particle::SPHMomentum::momentum_equation_particle_boundary_contribution");
 
   // get factor from kernel space dimension
-  const int kernelfac = kernel_->kernel_space_dimension() + 2;
+  const int kernelfac = Particle::Kernel::kernel_space_dimension(kernel_) + 2;
 
   // get relevant particle pair indices
   std::vector<int> relindices;
@@ -507,7 +509,8 @@ void Particle::SPHMomentum::momentum_equation_particle_boundary_contribution() c
              Particle::TransportVelocityFormulation::GeneralizedTransportVelocity)
     {
       // modified first derivative of kernel
-      const double mod_dWdrij = kernel_->d_wdrij(absdist, kernel_->smoothing_length(rad_i[0]));
+      const double mod_dWdrij = Particle::Kernel::d_wdrij(
+          kernel_, absdist, Particle::Kernel::smoothing_length(kernel_, rad_i[0]));
 
       // modified background pressure
       const double mod_bg_press_i =
@@ -527,7 +530,7 @@ void Particle::SPHMomentum::momentum_equation_particle_boundary_contribution() c
         material_i->artificialViscosity_ > 0.0)
     {
       // get smoothing length
-      const double h_i = kernel_->smoothing_length(rad_i[0]);
+      const double h_i = Particle::Kernel::smoothing_length(kernel_, rad_i[0]);
 
       // get speed of sound
       const double c_i = material_i->speed_of_sound();
@@ -555,7 +558,7 @@ void Particle::SPHMomentum::momentum_equation_particle_wall_contribution() const
   TEUCHOS_FUNC_TIME_MONITOR("Particle::SPHMomentum::momentum_equation_particle_wall_contribution");
 
   // get factor from kernel space dimension
-  const int kernelfac = kernel_->kernel_space_dimension() + 2;
+  const int kernelfac = Particle::Kernel::kernel_space_dimension(kernel_) + 2;
 
   // get wall data state container
   std::shared_ptr<Particle::WallDataState> walldatastate =
@@ -750,7 +753,7 @@ void Particle::SPHMomentum::momentum_equation_particle_wall_contribution() const
         ParticleUtils::vec_set_scale(e_ik, 1.0 / absdist, r_ik);
 
         // evaluate first derivative of kernel
-        const double dWdrik = kernel_->d_wdrij(absdist, rad_i[0]);
+        const double dWdrik = Particle::Kernel::d_wdrij(kernel_, absdist, rad_i[0]);
 
         // evaluate specific coefficient
         double speccoeff_ik(0.0);
@@ -788,7 +791,8 @@ void Particle::SPHMomentum::momentum_equation_particle_wall_contribution() const
                  Particle::TransportVelocityFormulation::GeneralizedTransportVelocity)
         {
           // modified first derivative of kernel
-          const double mod_dWdrij = kernel_->d_wdrij(absdist, kernel_->smoothing_length(rad_i[0]));
+          const double mod_dWdrij = Particle::Kernel::d_wdrij(
+              kernel_, absdist, Particle::Kernel::smoothing_length(kernel_, rad_i[0]));
 
           // modified background pressure
           const double mod_bg_press_i =
@@ -808,7 +812,7 @@ void Particle::SPHMomentum::momentum_equation_particle_wall_contribution() const
             material_i->artificialViscosity_ > 0.0)
         {
           // get smoothing length
-          const double h_i = kernel_->smoothing_length(rad_i[0]);
+          const double h_i = Particle::Kernel::smoothing_length(kernel_, rad_i[0]);
 
           // get speed of sound
           const double c_i = material_i->speed_of_sound();

@@ -31,7 +31,6 @@ namespace Particle
   class SPHBarrierForce;
   class SPHEquationOfStateBundle;
   class SPHInterfaceViscosity;
-  class SPHKernelBase;
   class SPHNeighborPairs;
   class SPHRecoilPressureEvaporation;
 }  // namespace Particle
@@ -58,7 +57,7 @@ namespace Particle
 
     //! setup surface tension handler
     void setup(const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
-        const std::shared_ptr<Particle::SPHKernelBase> kernel,
+        const Particle::KernelData kernel,
         const std::shared_ptr<Particle::MaterialHandler> particlematerial,
         const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
         const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs);
@@ -107,8 +106,8 @@ namespace Particle
     //! particle container bundle
     Particle::ParticleContainerBundleShrdPtr particlecontainerbundle_;
 
-    //! kernel handler
-    std::shared_ptr<Particle::SPHKernelBase> kernel_;
+    //! kernel data
+    Particle::KernelData kernel_;
 
     //! particle material handler
     std::shared_ptr<Particle::MaterialHandler> particlematerial_;

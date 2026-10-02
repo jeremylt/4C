@@ -95,7 +95,7 @@ Particle::SPHSurfaceTension::~SPHSurfaceTension() = default;
 
 void Particle::SPHSurfaceTension::setup(
     const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
-    const std::shared_ptr<Particle::SPHKernelBase> kernel,
+    const Particle::KernelData kernel,
     const std::shared_ptr<Particle::MaterialHandler> particlematerial,
     const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
     const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs)
@@ -635,7 +635,7 @@ void Particle::SPHSurfaceTension::compute_curvature() const
       if (not(ParticleUtils::vec_norm_two(ifn_i) > 0.0)) continue;
 
       // evaluate kernel
-      const double Wii = kernel_->w0(rad_i[0]);
+      const double Wii = Particle::Kernel::w0(kernel_, rad_i[0]);
 
       // (current) volume of particle i
       const double V_i = mass_i[0] / dens_i[0];

@@ -39,7 +39,7 @@ Particle::SPHVirtualWallParticle::SPHVirtualWallParticle(const Teuchos::Paramete
 void Particle::SPHVirtualWallParticle::setup(
     const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
     const std::shared_ptr<Particle::WallHandlerInterface> particlewallinterface,
-    const std::shared_ptr<Particle::SPHKernelBase> kernel,
+    const Particle::KernelData kernel,
     const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs)
 {
   // set interface to particle engine
@@ -89,7 +89,7 @@ void Particle::SPHVirtualWallParticle::init_relative_positions_of_virtual_partic
   const int numparticleperdir = std::round(maxinteractiondistance / initialparticlespacing);
 
   // get the kernel dimensionality
-  const int kernel_dim = kernel_->kernel_space_dimension();
+  const int kernel_dim = Particle::Kernel::kernel_space_dimension(kernel_);
 
   const int s_start = (kernel_dim > 1) ? (-numparticleperdir + 1) : 0;
   const int s_end = (kernel_dim > 1) ? numparticleperdir : 1;
@@ -263,7 +263,7 @@ void Particle::SPHVirtualWallParticle::init_states_at_wall_contact_points(
       const double absdist = ParticleUtils::vec_norm_two(r_jk);
 
       // evaluate kernel
-      const double Wjk = kernel_->w(absdist, rad_j[0]);
+      const double Wjk = Particle::Kernel::w(kernel_, absdist, rad_j[0]);
 
       // sum contribution of neighboring particle k
       sumk_Wjk += Wjk;

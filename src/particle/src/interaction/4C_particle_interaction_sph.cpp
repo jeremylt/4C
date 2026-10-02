@@ -52,8 +52,8 @@ Particle::ParticleInteractionSPH::~ParticleInteractionSPH() = default;
 
 void Particle::ParticleInteractionSPH::initialize_members()
 {
-  // init kernel handler
-  init_kernel_handler();
+  // init kernel data
+  init_kernel_data();
 
   // init equation of state bundle
   init_equation_of_state_bundle();
@@ -288,7 +288,7 @@ void Particle::ParticleInteractionSPH::insert_particle_states_of_particle_types(
 void Particle::ParticleInteractionSPH::set_initial_states()
 {
   // get kernel space dimension
-  const int kernelspacedim = kernel_->kernel_space_dimension();
+  const int kernelspacedim = Particle::Kernel::kernel_space_dimension(kernel_);
 
   // get initial particle spacing
   const double initialparticlespacing = params_sph_.get<double>("INITIALPARTICLESPACING");
@@ -528,30 +528,9 @@ void Particle::ParticleInteractionSPH::set_current_step_size(const double curren
   if (temperature_) temperature_->set_current_step_size(currentstepsize);
 }
 
-void Particle::ParticleInteractionSPH::init_kernel_handler()
+void Particle::ParticleInteractionSPH::init_kernel_data()
 {
-  // get type of smoothed particle hydrodynamics kernel
-  auto kerneltype = Teuchos::getIntegralValue<Particle::KernelType>(params_sph_, "KERNEL");
-
-  // create kernel handler
-  switch (kerneltype)
-  {
-    case Particle::CubicSpline:
-    {
-      kernel_ = std::make_shared<Particle::SPHKernelCubicSpline>(params_sph_);
-      break;
-    }
-    case Particle::QuinticSpline:
-    {
-      kernel_ = std::make_shared<Particle::SPHKernelQuinticSpline>(params_sph_);
-      break;
-    }
-    default:
-    {
-      FOUR_C_THROW("unknown kernel type!");
-      break;
-    }
-  }
+  kernel_ = Particle::Kernel::parse_kernel_params(params_sph_);
 }
 
 void Particle::ParticleInteractionSPH::init_equation_of_state_bundle()

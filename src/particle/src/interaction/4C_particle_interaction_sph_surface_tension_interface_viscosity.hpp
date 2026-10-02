@@ -30,7 +30,6 @@ namespace Particle
   class ParticleEngineInterface;
   class SPHArtificialViscosity;
   class SPHEquationOfStateBundle;
-  class SPHKernelBase;
   class SPHNeighborPairs;
 }  // namespace Particle
 
@@ -64,8 +63,7 @@ namespace Particle
 
     //! setup interface viscosity handler
     void setup(const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
-        const std::shared_ptr<Particle::SPHKernelBase> kernel,
-        Particle::MaterialHandler& particlematerial,
+        const Particle::KernelData kernel, Particle::MaterialHandler& particlematerial,
         const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
         const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs);
 
@@ -91,8 +89,8 @@ namespace Particle
     //! particle container bundle
     Particle::ParticleContainerBundleShrdPtr particlecontainerbundle_;
 
-    //! kernel handler
-    std::shared_ptr<Particle::SPHKernelBase> kernel_;
+    //! kernel data
+    Particle::KernelData kernel_;
 
     //! equation of state bundle
     std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle_;

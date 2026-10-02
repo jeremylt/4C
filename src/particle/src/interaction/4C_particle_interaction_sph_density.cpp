@@ -42,7 +42,7 @@ Particle::SPHDensityBase::SPHDensityBase(const Teuchos::ParameterList& params)
 void Particle::SPHDensityBase::setup(
     const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
     const std::shared_ptr<Particle::WallHandlerInterface> particlewallinterface,
-    const std::shared_ptr<Particle::SPHKernelBase> kernel,
+    const Particle::KernelData kernel,
     const std::shared_ptr<Particle::MaterialHandler> particlematerial,
     const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
     const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs,
@@ -142,7 +142,7 @@ void Particle::SPHDensityBase::sum_weighted_mass_self_contribution() const
           container_i->get_ptr_to_state_writable(Particle::State::DensitySum, particle_i);
 
       // evaluate kernel
-      const double Wii = kernel_->w0(rad_i[0]);
+      const double Wii = Particle::Kernel::w0(kernel_, rad_i[0]);
 
       // add self contribution
       denssum_i[0] += Wii * mass_i[0];
@@ -252,7 +252,7 @@ void Particle::SPHDensityBase::sum_weighted_mass_particle_wall_contribution() co
       if (absdist < rad_i[0])
       {
         // evaluate kernel
-        const double Wik = kernel_->w(absdist, rad_i[0]);
+        const double Wik = Particle::Kernel::w(kernel_, absdist, rad_i[0]);
 
         // sum contribution of virtual particle k
         denssum_i[0] += Wik * mass_i[0];
@@ -312,7 +312,7 @@ void Particle::SPHDensityBase::sum_colorfield_self_contribution() const
           container_i->get_ptr_to_state_writable(Particle::State::Colorfield, particle_i);
 
       // evaluate kernel
-      const double Wii = kernel_->w0(rad_i[0]);
+      const double Wii = Particle::Kernel::w0(kernel_, rad_i[0]);
 
       // add self contribution
       colorfield_i[0] += (Wii / dens_i[0]) * mass_i[0];
@@ -448,7 +448,7 @@ void Particle::SPHDensityBase::sum_colorfield_particle_wall_contribution() const
       if (absdist < rad_i[0])
       {
         // evaluate kernel
-        const double Wik = kernel_->w(absdist, rad_i[0]);
+        const double Wik = Particle::Kernel::w(kernel_, absdist, rad_i[0]);
 
         // sum contribution of virtual particle k
         colorfield_i[0] += V_k * Wik;
@@ -687,7 +687,7 @@ void Particle::SPHDensityBase::continuity_equation_particle_wall_contribution() 
         const double e_ik_vel_ik = ParticleUtils::vec_dot(r_ik, vel_ik) / absdist;
 
         // evaluate first derivative of kernel
-        const double dWdrik = kernel_->d_wdrij(absdist, rad_i[0]);
+        const double dWdrik = Particle::Kernel::d_wdrij(kernel_, absdist, rad_i[0]);
 
         // sum contribution of virtual particle k
         densdot_i[0] += dens_i[0] * V_k * dWdrik * e_ik_vel_ik;
@@ -815,7 +815,7 @@ Particle::SPHDensityPredictCorrect::~SPHDensityPredictCorrect() = default;
 void Particle::SPHDensityPredictCorrect::setup(
     const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
     const std::shared_ptr<Particle::WallHandlerInterface> particlewallinterface,
-    const std::shared_ptr<Particle::SPHKernelBase> kernel,
+    const Particle::KernelData kernel,
     const std::shared_ptr<Particle::MaterialHandler> particlematerial,
     const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
     const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs,

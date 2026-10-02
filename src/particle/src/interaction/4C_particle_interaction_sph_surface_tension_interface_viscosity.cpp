@@ -54,8 +54,7 @@ Particle::SPHInterfaceViscosity::~SPHInterfaceViscosity() = default;
 
 void Particle::SPHInterfaceViscosity::setup(
     const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
-    const std::shared_ptr<Particle::SPHKernelBase> kernel,
-    Particle::MaterialHandler& particlematerial,
+    const Particle::KernelData kernel, Particle::MaterialHandler& particlematerial,
     const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
     const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs)
 {
@@ -175,8 +174,9 @@ void Particle::SPHInterfaceViscosity::compute_interface_viscosity_particle_contr
         container_j->get_ptr_to_state_writable(Particle::State::Acceleration, particle_j);
 
     // get smoothing length
-    const double h_i = kernel_->smoothing_length(rad_i[0]);
-    const double h_j = (rad_i[0] == rad_j[0]) ? h_i : kernel_->smoothing_length(rad_j[0]);
+    const double h_i = Particle::Kernel::smoothing_length(kernel_, rad_i[0]);
+    const double h_j =
+        (rad_i[0] == rad_j[0]) ? h_i : Particle::Kernel::smoothing_length(kernel_, rad_j[0]);
 
     // evaluate transition factor above reference temperature
     double tempfac_i = 1.0;
@@ -303,7 +303,7 @@ void Particle::SPHInterfaceViscosity::compute_interface_viscosity_particle_bound
     const double* dens_j = &temp_dens;
 
     // get smoothing length
-    const double h_i = kernel_->smoothing_length(rad_i[0]);
+    const double h_i = Particle::Kernel::smoothing_length(kernel_, rad_i[0]);
 
     // evaluate transition factor above reference temperature
     double tempfac_i = 1.0;

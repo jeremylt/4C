@@ -30,7 +30,6 @@ namespace Particle
   class ParticleEngineInterface;
   class SPHDensityCorrectionBase;
   class SPHEquationOfStateBundle;
-  class SPHKernelBase;
   class SPHNeighborPairs;
   class SPHVirtualWallParticle;
   class WallHandlerInterface;
@@ -54,7 +53,7 @@ namespace Particle
     virtual void setup(
         const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
         const std::shared_ptr<Particle::WallHandlerInterface> particlewallinterface,
-        const std::shared_ptr<Particle::SPHKernelBase> kernel,
+        const Particle::KernelData kernel,
         const std::shared_ptr<Particle::MaterialHandler> particlematerial,
         const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
         const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs,
@@ -131,8 +130,8 @@ namespace Particle
     //! interface to particle wall handler
     std::shared_ptr<Particle::WallHandlerInterface> particlewallinterface_;
 
-    //! kernel handler
-    std::shared_ptr<Particle::SPHKernelBase> kernel_;
+    //! kernel data
+    Particle::KernelData kernel_;
 
     //! particle material handler
     std::shared_ptr<Particle::MaterialHandler> particlematerial_;
@@ -202,7 +201,7 @@ namespace Particle
     //! setup density handler
     void setup(const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
         const std::shared_ptr<Particle::WallHandlerInterface> particlewallinterface,
-        const std::shared_ptr<Particle::SPHKernelBase> kernel,
+        const Particle::KernelData kernel,
         const std::shared_ptr<Particle::MaterialHandler> particlematerial,
         const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
         const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs,

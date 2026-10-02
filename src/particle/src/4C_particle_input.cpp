@@ -10,6 +10,8 @@
 #include "4C_fem_condition_definition.hpp"
 #include "4C_io_input_spec_builders.hpp"
 #include "4C_io_input_spec_validators.hpp"
+#include "4C_particle_engine_typedefs.hpp"
+
 FOUR_C_NAMESPACE_OPEN
 
 /*---------------------------------------------------------------------------*
@@ -260,12 +262,12 @@ std::vector<Core::IO::InputSpec> Particle::valid_parameters()
               {.description = "write particle-wall interaction output", .default_value = false}),
 
           // type of smoothed particle hydrodynamics kernel
-          parameter<KernelType>(
+          parameter<Particle::KernelType>(
               "KERNEL", {.description = "type of smoothed particle hydrodynamics kernel",
-                            .default_value = Particle::CubicSpline}),
+                            .default_value = Particle::KernelType::CubicSpline}),
 
           // kernel space dimension number
-          parameter<KernelSpaceDimension>(
+          parameter<Particle::KernelSpaceDimension>(
               "KERNEL_SPACE_DIM", {.description = "kernel space dimension number",
                                       .default_value = Particle::KernelSpaceDimension::Kernel3D}),
 

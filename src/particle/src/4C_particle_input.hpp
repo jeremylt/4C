@@ -66,21 +66,6 @@ namespace Particle
    | smoothed particle hydrodynamics (SPH) specific control parameters         |
    *---------------------------------------------------------------------------*/
 
-  //! type of smoothed particle hydrodynamics kernel
-  enum KernelType
-  {
-    CubicSpline,
-    QuinticSpline
-  };
-
-  //! kernel space dimension number
-  enum class KernelSpaceDimension
-  {
-    Kernel1D,
-    Kernel2D,
-    Kernel3D
-  };
-
   //! type of smoothed particle hydrodynamics equation of state
   enum EquationOfStateType
   {

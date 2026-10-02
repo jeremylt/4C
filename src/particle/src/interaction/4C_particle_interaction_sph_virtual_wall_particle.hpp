@@ -27,7 +27,6 @@ namespace Particle
 {
   class ParticleContainerBundle;
   class ParticleEngineInterface;
-  class SPHKernelBase;
   class SPHNeighborPairs;
   class WallHandlerInterface;
 }  // namespace Particle
@@ -46,7 +45,7 @@ namespace Particle
     //! setup virtual wall particle handler
     void setup(const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
         const std::shared_ptr<Particle::WallHandlerInterface> particlewallinterface,
-        const std::shared_ptr<Particle::SPHKernelBase> kernel,
+        const Particle::KernelData kernel,
         const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs);
 
     //! get reference to relative positions of virtual particles
@@ -96,8 +95,8 @@ namespace Particle
     //! interface to particle wall handler
     std::shared_ptr<Particle::WallHandlerInterface> particlewallinterface_;
 
-    //! kernel handler
-    std::shared_ptr<Particle::SPHKernelBase> kernel_;
+    //! kernel data
+    Particle::KernelData kernel_;
 
     //! neighbor pair handler
     std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs_;

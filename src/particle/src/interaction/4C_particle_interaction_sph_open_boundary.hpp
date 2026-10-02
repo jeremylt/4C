@@ -29,7 +29,6 @@ namespace Particle
   class ParticleContainerBundle;
   class ParticleEngineInterface;
   class SPHEquationOfStateBundle;
-  class SPHKernelBase;
   class SPHNeighborPairs;
 }  // namespace Particle
 
@@ -50,7 +49,7 @@ namespace Particle
     //! setup open boundary handler
     virtual void setup(
         const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
-        const std::shared_ptr<Particle::SPHKernelBase> kernel,
+        const Particle::KernelData kernel,
         const std::shared_ptr<Particle::MaterialHandler> particlematerial,
         const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
         const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs);
@@ -74,8 +73,8 @@ namespace Particle
     //! particle container bundle
     Particle::ParticleContainerBundleShrdPtr particlecontainerbundle_;
 
-    //! kernel handler
-    std::shared_ptr<Particle::SPHKernelBase> kernel_;
+    //! kernel data
+    Particle::KernelData kernel_;
 
     //! particle material handler
     std::shared_ptr<Particle::MaterialHandler> particlematerial_;
@@ -120,7 +119,7 @@ namespace Particle
 
     //! setup open boundary handler
     void setup(const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
-        const std::shared_ptr<Particle::SPHKernelBase> kernel,
+        const Particle::KernelData kernel,
         const std::shared_ptr<Particle::MaterialHandler> particlematerial,
         const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
         const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs) override;
@@ -141,7 +140,7 @@ namespace Particle
 
     //! setup open boundary handler
     void setup(const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
-        const std::shared_ptr<Particle::SPHKernelBase> kernel,
+        const Particle::KernelData kernel,
         const std::shared_ptr<Particle::MaterialHandler> particlematerial,
         const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
         const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs) override;

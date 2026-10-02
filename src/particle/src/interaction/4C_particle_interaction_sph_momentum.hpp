@@ -31,7 +31,6 @@ namespace Particle
   class ParticleEngineInterface;
   class SPHArtificialViscosity;
   class SPHEquationOfStateBundle;
-  class SPHKernelBase;
   class SPHMomentumFormulationBase;
   class SPHNeighborPairs;
   class SPHVirtualWallParticle;
@@ -69,7 +68,7 @@ namespace Particle
     //! setup momentum handler
     void setup(const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
         const std::shared_ptr<Particle::WallHandlerInterface> particlewallinterface,
-        const std::shared_ptr<Particle::SPHKernelBase> kernel,
+        const Particle::KernelData kernel,
         const std::shared_ptr<Particle::MaterialHandler> particlematerial,
         const std::shared_ptr<Particle::InteractionWriter> particleinteractionwriter,
         const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
@@ -111,8 +110,8 @@ namespace Particle
     //! interface to particle wall handler
     std::shared_ptr<Particle::WallHandlerInterface> particlewallinterface_;
 
-    //! kernel handler
-    std::shared_ptr<Particle::SPHKernelBase> kernel_;
+    //! kernel data
+    Particle::KernelData kernel_;
 
     //! particle material handler
     std::shared_ptr<Particle::MaterialHandler> particlematerial_;

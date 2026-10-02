@@ -52,6 +52,15 @@ namespace Particle
   //! particle state enum
   using State = ParticleState;
 
+  //! particle kernel enum
+  using KernelType = ParticleKernelType;
+
+  //! particle kernel dimension
+  using KernelSpaceDimension = ParticleKernelSpaceDimension;
+
+  //! bundle of kernel data
+  using KernelData = std::tuple<ParticleKernelType, ParticleKernelSpaceDimension>;
+
   //! states of particle indexed by particle state enum
   using ParticleStates = std::vector<std::vector<double>>;
 

@@ -226,6 +226,36 @@ namespace Particle
 
   //! @}
 
+  //! \name definition of SPH particle kernel parameters
+  //! @{
+
+  /*!
+   * \brief enums of particle kernel type
+   *
+   * Enum for respective particle kernel types
+   *
+   */
+  enum class ParticleKernelType
+  {
+    CubicSpline,
+    QuinticSpline
+  };
+
+  /*!
+   * \brief enums of particle kernel space dimension
+   *
+   * Enum for respective particle space dimensions
+   *
+   */
+  enum class ParticleKernelSpaceDimension
+  {
+    Kernel1D,
+    Kernel2D,
+    Kernel3D
+  };
+
+  //! @}
+
 }  // namespace Particle
 
 /*---------------------------------------------------------------------------*/

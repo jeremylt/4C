@@ -27,7 +27,6 @@ namespace Particle
   class SPHBoundaryParticleBase;
   class SPHDensityBase;
   class SPHEquationOfStateBundle;
-  class SPHKernelBase;
   class SPHMomentum;
   class SPHNeighborPairs;
   class SPHOpenBoundaryBase;
@@ -113,8 +112,8 @@ namespace Particle
      */
     void initialize_members();
 
-    //! init kernel handler
-    void init_kernel_handler();
+    //! init kernel data
+    void init_kernel_data();
 
     //! init equation of state bundle
     void init_equation_of_state_bundle();
@@ -166,8 +165,8 @@ namespace Particle
     //! smoothed particle hydrodynamics specific parameter list
     const Teuchos::ParameterList& params_sph_;
 
-    //! kernel handler
-    std::shared_ptr<Particle::SPHKernelBase> kernel_;
+    //! kernel data
+    Particle::KernelData kernel_;
 
     //! equation of state bundle
     std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle_;

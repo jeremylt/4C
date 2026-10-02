@@ -31,7 +31,7 @@ Particle::SPHNeighborPairs::SPHNeighborPairs()
 void Particle::SPHNeighborPairs::setup(
     const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
     const std::shared_ptr<Particle::WallHandlerInterface> particlewallinterface,
-    const std::shared_ptr<Particle::SPHKernelBase> kernel)
+    const Particle::KernelData kernel)
 {
   // set interface to particle engine
   particleengineinterface_ = particleengineinterface;
@@ -201,10 +201,10 @@ void Particle::SPHNeighborPairs::evaluate_particle_pairs()
       if (absdist < rad_i[0])
       {
         // evaluate kernel
-        particlepair.Wij_ = kernel_->w(absdist, rad_i[0]);
+        particlepair.Wij_ = Particle::Kernel::w(kernel_, absdist, rad_i[0]);
 
         // evaluate first derivative of kernel
-        particlepair.dWdrij_ = kernel_->d_wdrij(absdist, rad_i[0]);
+        particlepair.dWdrij_ = Particle::Kernel::d_wdrij(kernel_, absdist, rad_i[0]);
       }
 
       // particle i within support radius of owned particle j
@@ -222,10 +222,10 @@ void Particle::SPHNeighborPairs::evaluate_particle_pairs()
         else
         {
           // evaluate kernel
-          particlepair.Wji_ = kernel_->w(absdist, rad_j[0]);
+          particlepair.Wji_ = Particle::Kernel::w(kernel_, absdist, rad_j[0]);
 
           // evaluate first derivative of kernel
-          particlepair.dWdrji_ = kernel_->d_wdrij(absdist, rad_j[0]);
+          particlepair.dWdrji_ = Particle::Kernel::d_wdrij(kernel_, absdist, rad_j[0]);
         }
       }
     }

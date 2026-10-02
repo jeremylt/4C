@@ -39,7 +39,7 @@ Particle::SPHOpenBoundaryBase::SPHOpenBoundaryBase(double initialparticlespacing
 
 void Particle::SPHOpenBoundaryBase::setup(
     const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
-    const std::shared_ptr<Particle::SPHKernelBase> kernel,
+    const Particle::KernelData kernel,
     const std::shared_ptr<Particle::MaterialHandler> particlematerial,
     const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
     const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs)
@@ -231,7 +231,7 @@ Particle::SPHOpenBoundaryDirichlet::SPHOpenBoundaryDirichlet(
 
 void Particle::SPHOpenBoundaryDirichlet::setup(
     const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
-    const std::shared_ptr<Particle::SPHKernelBase> kernel,
+    const Particle::KernelData kernel,
     const std::shared_ptr<Particle::MaterialHandler> particlematerial,
     const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
     const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs)
@@ -416,7 +416,7 @@ Particle::SPHOpenBoundaryNeumann::SPHOpenBoundaryNeumann(
 
 void Particle::SPHOpenBoundaryNeumann::setup(
     const std::shared_ptr<Particle::ParticleEngineInterface> particleengineinterface,
-    const std::shared_ptr<Particle::SPHKernelBase> kernel,
+    const Particle::KernelData kernel,
     const std::shared_ptr<Particle::MaterialHandler> particlematerial,
     const std::shared_ptr<Particle::SPHEquationOfStateBundle> equationofstatebundle,
     const std::shared_ptr<Particle::SPHNeighborPairs> neighborpairs)
